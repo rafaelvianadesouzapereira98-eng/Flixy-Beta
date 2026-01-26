@@ -1,0 +1,15 @@
+{
+  "name": "FLIXY ",
+  "short_name": "Flixy",
+  "start_url": "Flixy.html",
+  "display": "standalone",
+  "background_color": "#020202",
+  "theme_color": "#00f2ff",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/716/716429.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
