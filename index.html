@@ -257,7 +257,7 @@
             <span class="nav-link" onclick="nav('feed')">Home</span>
             <div class="profile-shield" onclick="nav('profile')">
                 <i class="fa-solid fa-ghost" style="color: var(--p); font-size: 18px;"></i>
-                <span id="nav-user-alias" style="font-weight: 800; font-size: 13px;">@Sinc...</span>
+                <span id="nav-user-alias" style="font-weight: 800; font-size: 13px;">@Aguardando...</span>
             </div>
         </div>
     </nav>
@@ -408,7 +408,7 @@
                         <h3>${v.title}</h3>
                         <div class="card-meta">
                             <span><i class="fa-solid fa-signal" style="color:var(--p)"></i> ${v.views || 0}</span>
-                            <span>@Sistema</span>
+                            <span>@${v.author_alias || 'Sistema'}</span>
                         </div>
                     </div>
                 `;
@@ -454,7 +454,9 @@
 
         // === INSCRIÇÕES ===
         function handleFollow() {
-            alert("Inscrito com sucesso em @Sistema!");
+            const v = videoStore.find(vid => vid.id === currentVideoID);
+            const author = v ? (v.author_alias || 'Sistema') : 'Sistema';
+            alert("Inscrito com sucesso em @" + author + "!");
         }
 
         // === COMENTÁRIOS ===
@@ -495,7 +497,7 @@
             try {
                 await supa.storage.from('media').upload(n, f);
                 const { data: link } = supa.storage.from('media').getPublicUrl(n);
-                await supa.from('videos').insert([{ title: t, video_url: link.publicUrl, views: 0, likes: 0 }]);
+                await supa.from('videos').insert([{ title: t, video_url: link.publicUrl, views: 0, likes: 0, author_alias: userAlias }]);
                 location.reload();
             } catch (err) { alert("Erro!"); }
         }
