@@ -275,7 +275,7 @@
             </div>
 
             <div class="matrix-grid" id="main-matrix"></div>
-            <div class="fab-trigger" onclick="nav('up')"><i class="fa-solid fa-plus"></i></div>
+            <div class="fab-trigger" onclick="handleProtectedNav('up')"><i class="fa-solid fa-plus"></i></div>
         </section>
 
         <section id="p-play" class="page">
@@ -323,7 +323,13 @@
                     </button>
                 </div>
             </div>
-        </section>
+
+            <div style="max-width: 1800px; margin: 40px auto 0;">
+                <h2 style="font-family:'Orbitron'; font-size: 20px; border-bottom: 1px solid #1a1a1a; padding-bottom: 10px; margin-bottom: 20px;"><i class="fa-solid fa-video" style="color:var(--p)"></i> MEUS VÍDEOS</h2>
+                <div class="matrix-grid" id="my-videos-matrix">
+                    </div>
+            </div>
+            </section>
 
         <section id="p-up" class="page">
             <div class="omega-form">
@@ -371,12 +377,13 @@
         let currentVideoID = null;
         let userAlias = localStorage.getItem('flixy_v4_alias') || 'Guest_' + Math.floor(Math.random()*9999);
         let userIP = 'local-user';
+        let isUserAuthenticated = false; // Flag de autenticação
 
         async function initApp() {
             // Verifica se o usuário voltou de um login social
             const { data: { user } } = await supa.auth.getUser();
             if (user) {
-                // Se logado, usa o nome do Google ou o e-mail como Alias
+                isUserAuthenticated = true;
                 userAlias = user.user_metadata.full_name || user.email.split('@')[0];
                 localStorage.setItem('flixy_v4_alias', userAlias);
             }
@@ -398,10 +405,20 @@
             const { error } = await supa.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: window.location.origin // Redireciona para sua URL da Vercel
+                    redirectTo: window.location.origin
                 }
             });
             if (error) alert("Erro na autenticação: " + error.message);
+        }
+
+        // === BLOQUEIO DE ACESSO AO UPLOAD ===
+        function handleProtectedNav(pageId) {
+            if (pageId === 'up' && !isUserAuthenticated) {
+                alert("ACESSO RESTRITO: Entre com sua conta Google para postar vídeos no Flixy.");
+                nav('profile');
+                return;
+            }
+            nav(pageId);
         }
 
         function nav(pageId) {
@@ -410,6 +427,7 @@
             window.scrollTo({top: 0, behavior: 'smooth'});
             if(pageId !== 'play') document.getElementById('main-core').pause();
             if(pageId === 'feed') refreshData();
+            if(pageId === 'profile') renderMyVideos();
         }
 
         async function refreshData() {
@@ -442,50 +460,69 @@
             });
         }
 
+        function renderMyVideos() {
+            const myGrid = document.getElementById('my-videos-matrix');
+            if(!myGrid) return;
+            myGrid.innerHTML = '';
+            const myVids = videoStore.filter(v => v.author_alias === userAlias);
+            if(myVids.length === 0) {
+                myGrid.innerHTML = '<p style="color:#666; font-size:14px; grid-column: 1 / -1;">Você ainda não fez upload de nenhum vídeo.</p>';
+                return;
+            }
+            myVids.forEach(v => {
+                const card = document.createElement('div');
+                card.className = 'omega-card';
+                card.onclick = () => launchPlayer(v);
+                card.innerHTML = `
+                    <div class="card-preview">
+                        <video class="preview-vid" src="${v.video_url}#t=0.5" muted></video>
+                    </div>
+                    <div class="card-details">
+                        <h3>${v.title}</h3>
+                        <div class="card-meta">
+                            <span><i class="fa-solid fa-signal" style="color:var(--p)"></i> ${v.views || 0}</span>
+                            <span><i class="fa-solid fa-heart" style="color:var(--a)"></i> ${v.likes || 0}</span>
+                        </div>
+                    </div>
+                `;
+                myGrid.appendChild(card);
+            });
+        }
+
         async function launchPlayer(v) {
             currentVideoID = v.id;
             const core = document.getElementById('main-core');
             core.src = v.video_url;
             document.getElementById('v-title-display').innerText = v.title;
             document.getElementById('like-count').innerText = v.likes || 0;
-            
             nav('play');
-
-            // --- LÓGICA DE VISUALIZAÇÃO COM TRAVA ---
             const viewKey = `viewed_${v.id}_${userIP}`;
             let displayViews = parseInt(v.views) || 0;
-
             if (!localStorage.getItem(viewKey)) {
                 displayViews += 1;
                 await supa.from('videos').update({ views: displayViews }).eq('id', v.id);
                 localStorage.setItem(viewKey, 'true');
             }
             document.getElementById('view-player-count').innerText = displayViews;
-
             loadComments(v.id);
         }
 
-        // === CURTIDAS ===
         async function handleLike() {
             const likeKey = `liked_${currentVideoID}`;
             if(localStorage.getItem(likeKey)) return alert("Você já curtiu!");
-
             const v = videoStore.find(vid => vid.id === currentVideoID);
             const newLikes = (parseInt(v.likes) || 0) + 1;
-            
             await supa.from('videos').update({ likes: newLikes }).eq('id', currentVideoID);
             document.getElementById('like-count').innerText = newLikes;
             localStorage.setItem(likeKey, 'true');
         }
 
-        // === INSCRIÇÕES ===
         function handleFollow() {
             const v = videoStore.find(vid => vid.id === currentVideoID);
             const author = v ? (v.author_alias || 'Sistema') : 'Sistema';
             alert("Inscrito com sucesso em @" + author + "!");
         }
 
-        // === COMENTÁRIOS ===
         async function loadComments(vidId) {
             const { data } = await supa.from('comments').select('*').eq('video_id', vidId).order('created_at', {ascending: false});
             const render = document.getElementById('comm-list-render');
@@ -503,22 +540,24 @@
         async function postComment() {
             const input = document.getElementById('comment-input');
             if(!input.value) return;
-
             await supa.from('comments').insert([{
                 video_id: currentVideoID,
                 user_alias: userAlias,
                 content: input.value
             }]);
-
             input.value = '';
             loadComments(currentVideoID);
         }
 
         async function executeUpload() {
+            // Segunda camada de proteção no script
+            if (!isUserAuthenticated) {
+                alert("Erro: Apenas usuários logados podem realizar uploads.");
+                return;
+            }
             const f = document.getElementById('up-file').files[0];
             const t = document.getElementById('up-title').value;
             if(!f || !t) return alert("Preencha tudo!");
-            
             const n = Date.now() + "_" + f.name;
             try {
                 await supa.storage.from('media').upload(n, f);
@@ -546,10 +585,6 @@
 
         window.onload = initApp;
 
-        // ==========================================
-        // ADIÇÃO: SISTEMA DE PREVENÇÃO DE ERROS OMEGA
-        // ==========================================
-
         function triggerError(type) {
             document.getElementById('app-content').style.display = 'none';
             document.getElementById('main-nav').style.display = 'none';
@@ -557,18 +592,10 @@
             else document.getElementById('error-db').style.display = 'flex';
         }
 
-        function handleVideoError() {
-            triggerError('db');
-        }
-
-        function checkConnectivity() {
-            if (!navigator.onLine) triggerError('net');
-        }
-
+        function handleVideoError() { triggerError('db'); }
+        function checkConnectivity() { if (!navigator.onLine) triggerError('net'); }
         window.addEventListener('offline', () => triggerError('net'));
         window.addEventListener('online', () => location.reload());
-        
-        // Verifica internet ao abrir o app
         document.addEventListener('DOMContentLoaded', checkConnectivity);
     </script>
 </body>
