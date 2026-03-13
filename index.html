@@ -84,7 +84,7 @@
         .interaction-panel { display: flex; gap: 15px; margin: 35px 0; padding-bottom: 30px; border-bottom: 1px solid #111; align-items: center; flex-wrap: wrap; }
         .action-btn { background: var(--s2); border: 1px solid #222; color: #fff; padding: 14px 25px; border-radius: 12px; cursor: pointer; font-weight: 700; display: flex; align-items: center; gap: 10px; transition: 0.2s; }
         .action-btn:hover { background: #1a1a1a; border-color: #444; transform: translateY(-2px); }
-        .action-btn.active { color: var(--p); border-color: var(--p); }
+        .action-btn.active { color: var(--p); border-color: var(--p); background: rgba(0, 242, 255, 0.05); } /* Cor de fundo leve ao ativar */
 
         .comments-engine { margin-top: 40px; }
         .comment-box { background: rgba(255,255,255,0.01); border: 1px solid #111; padding: 25px; border-radius: 20px; margin-bottom: 15px; transition: 0.3s; }
@@ -127,6 +127,10 @@
         .retry-btn-dark { background: #fff; color: #000; border: none; padding: 12px 24px; border-radius: 24px; font-weight: 600; cursor: pointer; margin-top: 20px; }
         .retry-btn-light { background: transparent; color: #065fd4; border: none; font-weight: 800; font-size: 16px; cursor: pointer; text-transform: uppercase; margin-top: 20px; }
 
+        /* Estilo da lista de inscritos */
+        .sub-item { background: var(--s2); padding: 15px 20px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #1a1a1a; display: flex; align-items: center; justify-content: space-between; transition: 0.3s; }
+        .sub-item:hover { border-color: var(--p); transform: translateX(5px); }
+        
         @media (max-width: 600px) {
             nav { padding: 10px 5%; }
             .logo-text { font-size: 16px; }
@@ -203,8 +207,8 @@
                     <h1 id="v-title-display" style="margin:0; font-size: 38px; letter-spacing: -1.5px;"></h1>
                     
                     <div class="interaction-panel">
-                        <button class="action-btn" onclick="handleLike()"><i class="fa-solid fa-heart"></i> <span id="like-count">0</span> CURTIR</button>
-                        <button class="action-btn" onclick="handleFollow()"><i class="fa-solid fa-plus"></i> INSCREVER-SE</button>
+                        <button id="btn-like" class="action-btn" onclick="handleLike()"><i class="fa-solid fa-heart"></i> <span id="like-count">0</span>&nbsp;CURTIR</button>
+                        <button id="btn-subscribe" class="action-btn" onclick="handleFollow()"><i class="fa-solid fa-plus"></i> INSCREVER-SE</button>
                         <button class="action-btn" onclick="copyLink()"><i class="fa-solid fa-share-nodes"></i> COMPARTILHAR</button>
                         <span style="margin-left:auto; color:#444; font-size:12px; font-weight:800;"><i class="fa-solid fa-eye"></i> <span id="view-player-count">0</span> VIEWS</span>
                     </div>
@@ -266,8 +270,18 @@
                         <p id="analytics-likes">0</p>
                     </div>
                     <div class="stat-card">
+                        <h4>Inscritos</h4>
+                        <p id="analytics-subs">0</p> </div>
+                    <div class="stat-card">
                         <h4>Vídeos Publicados</h4>
                         <p id="analytics-videos">0</p>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px; background: var(--s); padding: 30px; border-radius: 20px; border: 1px solid #1a1a1a;">
+                    <h3 style="font-family:'Orbitron'; font-size: 16px; margin-top: 0; margin-bottom: 20px; color: #eee;"><i class="fa-solid fa-users" style="color:var(--p)"></i> QUEM SE INSCREVEU EM VOCÊ</h3>
+                    <div id="analytics-subs-list">
+                        <p style="color:#666; font-size:14px;">Carregando dados da rede...</p>
                     </div>
                 </div>
             </div>
@@ -317,10 +331,9 @@
         let currentSupabaseUser = null;
         let userIP = 'local-user';
 
-        // Variáveis de Identidade
-        let userAlias = '';   // Nome de exibição
-        let userHandle = '';  // @ Único imutável
-        let userAvatar = '';  // URL da foto
+        let userAlias = '';   
+        let userHandle = '';  
+        let userAvatar = '';  
 
         async function initApp() {
             const { data: { user } } = await supa.auth.getUser();
@@ -329,31 +342,24 @@
                 isUserAuthenticated = true;
                 currentSupabaseUser = user;
                 
-                // CRIA O @ ÚNICO BASEADO NO ID DO SUPABASE (Ex: @id_a1b2c3d4)
                 userHandle = "id_" + user.id.split('-')[0];
-                
-                // Nome de exibição (pode ser trocado depois)
                 userAlias = user.user_metadata?.display_name || user.user_metadata?.full_name || user.email.split('@')[0];
-                
-                // Foto de perfil
                 userAvatar = user.user_metadata?.avatar_url || 'https://via.placeholder.com/150';
                 
                 localStorage.setItem('flixy_v4_alias', userAlias);
                 document.getElementById('auth-section').style.display = 'none';
                 
-                // Atualiza o avatar na barra de navegação
                 const navIcon = document.getElementById('nav-avatar-icon');
                 if (userAvatar !== 'https://via.placeholder.com/150') {
                     navIcon.outerHTML = `<img src="${userAvatar}" id="nav-avatar-icon" class="nav-avatar">`;
                 }
             } else {
                 userAlias = localStorage.getItem('flixy_v4_alias') || 'Guest_' + Math.floor(Math.random()*9999);
-                userHandle = userAlias; // Fallback para usuários não logados
+                userHandle = userAlias; 
                 userAvatar = 'https://via.placeholder.com/150';
                 document.getElementById('unique-id-field').value = "Faça login para ter um @ único e permanente";
             }
 
-            // Popula os dados visuais do perfil e navegação
             document.getElementById('nav-user-alias').innerText = userAlias;
             document.getElementById('alias-field').value = userAlias;
             document.getElementById('profile-avatar-img').src = userAvatar;
@@ -395,10 +401,8 @@
             if(pageId === 'profile') renderMyVideos();
         }
 
-        // === NOVO SISTEMA DE FOTO (AVATAR) ===
         async function handleAvatarUpload(event) {
             if (!isUserAuthenticated) return alert("Você precisa conectar sua conta para alterar a foto!");
-            
             const file = event.target.files[0];
             if (!file) return;
             
@@ -407,17 +411,11 @@
             const fileName = `avatar_${currentSupabaseUser.id}_${Date.now()}.${fileExt}`;
             
             try {
-                // Faz o upload para a raiz do bucket 'media'
                 const { error: uploadError } = await supa.storage.from('media').upload(fileName, file);
                 if (uploadError) throw uploadError;
                 
                 const { data: link } = supa.storage.from('media').getPublicUrl(fileName);
-                
-                // Atualiza a URL da foto no Auth metadata do usuário
-                const { error: updateError } = await supa.auth.updateUser({
-                    data: { avatar_url: link.publicUrl }
-                });
-                
+                const { error: updateError } = await supa.auth.updateUser({ data: { avatar_url: link.publicUrl } });
                 if (updateError) throw updateError;
                 
                 alert("Sua foto de perfil foi atualizada!");
@@ -432,10 +430,7 @@
             const newName = document.getElementById('alias-field').value;
             if (isUserAuthenticated) {
                 try {
-                    // Atualiza o Nome de Exibição no banco Auth do Supabase
-                    const { error } = await supa.auth.updateUser({
-                        data: { display_name: newName }
-                    });
+                    const { error } = await supa.auth.updateUser({ data: { display_name: newName } });
                     if (error) throw error;
                     alert("Nome de exibição salvo com sucesso!");
                 } catch (err) { alert("Erro ao salvar o nome."); }
@@ -474,16 +469,13 @@
             });
         }
 
-        // === NOVO SISTEMA DE ANALYTICS E "MEUS VÍDEOS" ===
-        function renderMyVideos() {
+        async function renderMyVideos() {
             const myGrid = document.getElementById('my-videos-matrix');
             if(!myGrid) return;
             myGrid.innerHTML = '';
             
-            // Puxa vídeos que batem com o @ Único ou com o nome antigo
             const myVids = videoStore.filter(v => v.author_alias === userHandle || v.author_alias === userAlias);
             
-            // Lógica do Analytics
             let tViews = 0, tLikes = 0;
             myVids.forEach(v => {
                 tViews += parseInt(v.views) || 0;
@@ -494,8 +486,33 @@
             document.getElementById('analytics-likes').innerText = tLikes;
             document.getElementById('analytics-videos').innerText = myVids.length;
 
+            // === NOVO: BUSCA E LISTA OS INSCRITOS DO BANCO ===
+            if (isUserAuthenticated) {
+                const { data: subs } = await supa.from('subscribers').select('*').eq('creator_id', userHandle);
+                const subCount = subs ? subs.length : 0;
+                document.getElementById('analytics-subs').innerText = subCount;
+
+                const subsList = document.getElementById('analytics-subs-list');
+                subsList.innerHTML = '';
+                
+                if (subs && subs.length > 0) {
+                    subs.forEach(s => {
+                        subsList.innerHTML += `
+                            <div class="sub-item">
+                                <span style="color: var(--t); font-weight: 800; font-size: 14px;">${s.subscriber_alias}</span>
+                                <span style="background: var(--glass); padding: 4px 10px; border-radius: 6px; color: var(--p); font-family: 'JetBrains Mono'; font-size: 12px;">@${s.subscriber_handle}</span>
+                            </div>
+                        `;
+                    });
+                } else {
+                    subsList.innerHTML = '<p style="color:#666; font-size:14px;">Você ainda não tem inscritos.</p>';
+                }
+            } else {
+                document.getElementById('analytics-subs-list').innerHTML = '<p style="color:#666; font-size:14px;">Faça login para gerenciar inscritos.</p>';
+            }
+
             if(myVids.length === 0) {
-                myGrid.innerHTML = '<p style="color:#666; font-size:14px; grid-column: 1 / -1;">Você ainda não fez upload de nenhum vídeo para gerar métricas.</p>';
+                myGrid.innerHTML = '<p style="color:#666; font-size:14px; grid-column: 1 / -1;">Você ainda não fez upload de nenhum vídeo.</p>';
                 return;
             }
 
@@ -524,7 +541,38 @@
             const core = document.getElementById('main-core');
             core.src = v.video_url;
             document.getElementById('v-title-display').innerText = v.title;
-            document.getElementById('like-count').innerText = v.likes || 0;
+            
+            // === VERIFICA SE JÁ CURTIU E AJUSTA O BOTÃO ===
+            const likeBtn = document.getElementById('btn-like');
+            const likeCountSpan = document.getElementById('like-count');
+            likeCountSpan.innerText = v.likes || 0;
+            
+            if(localStorage.getItem(`liked_${v.id}`)) {
+                likeBtn.classList.add('active');
+            } else {
+                likeBtn.classList.remove('active');
+            }
+
+            // === VERIFICA SE ESTÁ INSCRITO E AJUSTA O BOTÃO ===
+            const subBtn = document.getElementById('btn-subscribe');
+            subBtn.classList.remove('active');
+            subBtn.innerHTML = `<i class="fa-solid fa-plus"></i> INSCREVER-SE`;
+            if (isUserAuthenticated && v.author_alias !== userHandle) {
+                const { data } = await supa.from('subscribers')
+                    .select('*')
+                    .eq('creator_id', v.author_alias)
+                    .eq('subscriber_handle', userHandle);
+                
+                if (data && data.length > 0) {
+                    subBtn.classList.add('active');
+                    subBtn.innerHTML = `<i class="fa-solid fa-check"></i> INSCRITO`;
+                }
+            } else if (v.author_alias === userHandle) {
+                subBtn.style.display = 'none'; // Esconde botão de se inscrever se for o próprio vídeo
+            } else {
+                subBtn.style.display = 'flex';
+            }
+
             nav('play');
             
             const viewKey = `viewed_${v.id}_${userIP}`;
@@ -538,20 +586,66 @@
             loadComments(v.id);
         }
 
+        // === NOVO: SISTEMA DE CURTIR E DESCURTIR (TOGGLE) ===
         async function handleLike() {
             const likeKey = `liked_${currentVideoID}`;
-            if(localStorage.getItem(likeKey)) return alert("Você já curtiu!");
             const v = videoStore.find(vid => vid.id === currentVideoID);
-            const newLikes = (parseInt(v.likes) || 0) + 1;
-            await supa.from('videos').update({ likes: newLikes }).eq('id', currentVideoID);
-            document.getElementById('like-count').innerText = newLikes;
-            localStorage.setItem(likeKey, 'true');
+            if(!v) return;
+
+            let currentLikes = parseInt(v.likes) || 0;
+            const likeBtn = document.getElementById('btn-like');
+            const likeCountSpan = document.getElementById('like-count');
+
+            if(localStorage.getItem(likeKey)) {
+                // Remove a curtida
+                currentLikes = Math.max(0, currentLikes - 1);
+                localStorage.removeItem(likeKey);
+                likeBtn.classList.remove('active');
+            } else {
+                // Adiciona a curtida
+                currentLikes += 1;
+                localStorage.setItem(likeKey, 'true');
+                likeBtn.classList.add('active');
+            }
+
+            // Atualiza localmente e manda pro Supabase
+            v.likes = currentLikes;
+            likeCountSpan.innerText = currentLikes;
+            await supa.from('videos').update({ likes: currentLikes }).eq('id', currentVideoID);
         }
 
-        function handleFollow() {
+        // === NOVO: SISTEMA DE INSCRIÇÕES NO SUPABASE (TOGGLE) ===
+        async function handleFollow() {
+            if (!isUserAuthenticated) return alert("Você precisa conectar sua conta para se inscrever!");
+            
             const v = videoStore.find(vid => vid.id === currentVideoID);
-            const author = v ? (v.author_alias || 'Sistema') : 'Sistema';
-            alert("Inscrito com sucesso em @" + author + "!");
+            const creator = v ? v.author_alias : null;
+            if (!creator) return;
+            if (creator === userHandle) return alert("Você não pode se inscrever no próprio canal!");
+
+            const subBtn = document.getElementById('btn-subscribe');
+
+            // Verifica no banco se já é inscrito
+            const { data } = await supa.from('subscribers')
+                .select('*')
+                .eq('creator_id', creator)
+                .eq('subscriber_handle', userHandle);
+
+            if (data && data.length > 0) {
+                // Já é inscrito: Cancelar inscrição
+                await supa.from('subscribers').delete().eq('id', data[0].id);
+                subBtn.classList.remove('active');
+                subBtn.innerHTML = `<i class="fa-solid fa-plus"></i> INSCREVER-SE`;
+            } else {
+                // Não é inscrito: Criar inscrição
+                await supa.from('subscribers').insert([{
+                    creator_id: creator,
+                    subscriber_handle: userHandle,
+                    subscriber_alias: userAlias
+                }]);
+                subBtn.classList.add('active');
+                subBtn.innerHTML = `<i class="fa-solid fa-check"></i> INSCRITO`;
+            }
         }
 
         async function loadComments(vidId) {
@@ -573,7 +667,7 @@
             if(!input.value) return;
             await supa.from('comments').insert([{
                 video_id: currentVideoID,
-                user_alias: userAlias, // Usa o Nome de exibição nos comentários
+                user_alias: userAlias,
                 content: input.value
             }]);
             input.value = '';
@@ -590,17 +684,15 @@
             if(!f || !t) return alert("Preencha todos os campos do upload!");
             const n = Date.now() + "_" + f.name;
             try {
-                // Envia o arquivo
                 await supa.storage.from('media').upload(n, f);
                 const { data: link } = supa.storage.from('media').getPublicUrl(n);
                 
-                // Salva no banco vinculando ao @ ÚNICO do usuário
                 await supa.from('videos').insert([{ 
                     title: t, 
                     video_url: link.publicUrl, 
                     views: 0, 
                     likes: 0, 
-                    author_alias: userHandle // Garante que o vídeo seja da sua identidade imutável
+                    author_alias: userHandle 
                 }]);
                 
                 alert("Vídeo sincronizado ao multiverso!");
