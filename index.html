@@ -754,6 +754,12 @@
         window.addEventListener('offline', () => triggerError('net'));
         window.addEventListener('online', () => location.reload());
         document.addEventListener('DOMContentLoaded', checkConnectivity);
+
+        if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js')
+    .then(() => console.log("Service Worker registrado com sucesso!"))
+    .catch(err => console.log("Erro ao registrar SW:", err));
+}
     </script>
 </body>
 </html>
