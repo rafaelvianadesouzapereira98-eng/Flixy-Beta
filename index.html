@@ -172,6 +172,8 @@
         </div>
 
         <div class="nav-actions">
+            <span class="nav-link" id="pwa-install-btn" style="display: none; color: var(--p);" onclick="installPWA()"><i class="fa-solid fa-download"></i> Instalar App</span>
+            
             <span class="nav-link" onclick="nav('feed')">Home</span>
             <div class="profile-shield" onclick="nav('profile')">
                 <i id="nav-avatar-icon" class="fa-solid fa-ghost" style="color: var(--p); font-size: 18px;"></i>
@@ -308,6 +310,34 @@
     </main>
 
     <script>
+        // === LÓGICA DE INSTALAÇÃO PWA ADICIONADA ===
+        let deferredPrompt;
+        const installBtn = document.getElementById('pwa-install-btn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault(); // Impede o Chrome de mostrar o prompt automaticamente
+            deferredPrompt = e; // Salva o evento
+            installBtn.style.display = 'block'; // Mostra o nosso botão na NavBar
+        });
+
+        async function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt(); // Mostra o popup de instalação nativo
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    console.log('Flixy instalado com sucesso!');
+                }
+                deferredPrompt = null;
+                installBtn.style.display = 'none'; // Esconde o botão após instalar
+            }
+        }
+
+        window.addEventListener('appinstalled', () => {
+            installBtn.style.display = 'none'; // Limpa o botão caso o usuário instale de outra forma
+            deferredPrompt = null;
+        });
+        // ===========================================
+
         function toggleSearch() {
             const container = document.getElementById('search-container');
             const input = document.getElementById('master-search');
